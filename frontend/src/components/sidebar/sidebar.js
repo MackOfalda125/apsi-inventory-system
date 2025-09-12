@@ -37,6 +37,14 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
     handleNavigation('/items');
   }
 
+  const handleOrdersClick = () => {
+    handleNavigation('/orders');
+  }
+
+  const handleInvoicesClick = () => {
+    handleNavigation('/invoices');
+  }
+
   return (
     <>
       {/* Overlay */}
@@ -117,6 +125,54 @@ const Sidebar = ({ isOpen, onClose, onLogout }) => {
                   <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                 </svg>
                 <span className="nav-text">Items</span>
+              </button>
+            </div>
+
+            <div className="sidebar-section">
+              <button 
+                className="nav-button"
+                onClick={handleOrdersClick}
+                aria-label="Go to Orders"
+              >
+                <svg 
+                  width="20" 
+                  height="20" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                  className="nav-icon"
+                >
+                  <rect x="3" y="4" width="14" height="16" rx="2" ry="2"/>
+                  <path d="M7 8h8"/>
+                  <path d="M7 12h8"/>
+                  <path d="M7 16h8"/>
+                </svg>
+                <span className="nav-text">Orders</span>
+              </button>
+            </div>
+
+            <div className="sidebar-section">
+              <button 
+                className="nav-button"
+                onClick={handleInvoicesClick}
+                aria-label="Go to Invoices"
+              >
+                <svg 
+                  width="20" 
+                  height="20" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                  className="nav-icon"
+                >
+                  <rect x="4" y="3" width="14" height="18" rx="2" ry="2"/>
+                  <path d="M8 7h8"/>
+                  <path d="M8 11h8"/>
+                  <path d="M8 15h5"/>
+                </svg>
+                <span className="nav-text">Invoices</span>
               </button>
             </div>
             
