@@ -1,0 +1,149 @@
+/* Topbar Component Styles */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--color-panel-bg);
+  border-bottom: 1px solid rgba(205, 250, 250, 0.1);
+  padding: var(--spacing-md) var(--spacing-lg);
+  height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 1100; /* Higher than sidebar to stay in front */
+  box-shadow: var(--shadow-sm);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+}
+
+/* Hamburger Menu Button */
+.hamburger-menu {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: all 0.3s ease;
+}
+
+.hamburger-menu:hover {
+  background-color: rgba(205, 250, 250, 0.1);
+}
+
+.hamburger-menu:focus {
+  outline: 2px solid var(--color-primary-accent);
+  outline-offset: 2px;
+}
+
+.hamburger-line {
+  width: 20px;
+  height: 2px;
+  background-color: var(--color-primary-text);
+  margin: 2px 0;
+  transition: all 0.3s ease;
+  border-radius: 1px;
+}
+
+.hamburger-menu:hover .hamburger-line {
+  background-color: var(--color-primary-accent);
+}
+
+/* Screen Title */
+.screen-title {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-primary-accent);
+  margin: 0;
+  line-height: 1;
+}
+
+/* Placeholder Text */
+.placeholder-text {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  color: var(--color-gray-medium);
+  font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .topbar {
+    padding: var(--spacing-sm) var(--spacing-md);
+    height: 56px;
+  }
+  
+  .topbar-left {
+    gap: var(--spacing-md);
+  }
+  
+  .screen-title {
+    font-size: 1.25rem;
+  }
+  
+  .hamburger-menu {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .hamburger-line {
+    width: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    padding: var(--spacing-sm);
+  }
+  
+  .screen-title {
+    font-size: 1.125rem;
+  }
+  
+  .placeholder-text {
+    font-size: 0.9rem;
+  }
+}
+
+/* Animation for hamburger menu to X */
+.hamburger-menu.active .hamburger-line:nth-child(1) {
+  transform: rotate(45deg) translate(6px, 6px);
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(3) {
+  transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Focus and Accessibility */
+.hamburger-menu:focus-visible {
+  outline: 2px solid var(--color-primary-accent);
+  outline-offset: 2px;
+}
+
+/* Hover effects */
+.topbar {
+  transition: box-shadow 0.3s ease;
+}
+
+.topbar:hover {
+  box-shadow: var(--shadow-md);
+}

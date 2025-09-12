@@ -10,6 +10,7 @@ const Items = () => {
       name: 'Abyssal Mask',
       category: 'Magic',
       price: 2650.00,
+      quantity: 12,
       distributor_id: 'DIST001',
       image_url: 'https://wiki.leagueoflegends.com/en-us/images/Abyssal_Mask_item.png?aac97'
     },
@@ -18,6 +19,7 @@ const Items = () => {
       name: 'Archangel\'s Staff',
       category: 'Magic',
       price: 2900.00,
+      quantity: 8,
       distributor_id: 'DIST002',
       image_url: 'https://wiki.leagueoflegends.com/en-us/images/Archangel%27s_Staff_item.png?df623'
     },
@@ -26,6 +28,7 @@ const Items = () => {
       name: 'Ardent Censer',
       category: 'Magic',
       price: 2200.00,
+      quantity: 15,
       distributor_id: 'DIST003',
       image_url: 'https://wiki.leagueoflegends.com/en-us/images/Ardent_Censer_item.png?aa186'
     },
@@ -34,6 +37,7 @@ const Items = () => {
       name: 'Axiom Arc',
       category: 'Damage',
       price: 2750.00,
+      quantity: 5,
       distributor_id: 'DIST001',
       image_url: 'https://wiki.leagueoflegends.com/en-us/images/Axiom_Arc_item.png?faf11'
     },
@@ -42,6 +46,7 @@ const Items = () => {
       name: 'Banshee\'s Veil',
       category: 'Magic',
       price: 3000,
+      quantity: 20,
       distributor_id: 'DIST002',
       image_url: 'https://wiki.leagueoflegends.com/en-us/images/Banshee%27s_Veil_item.png?47857'
     }
@@ -52,6 +57,7 @@ const Items = () => {
     name: '',
     category: '',
     price: '',
+    quantity: '',
     distributor_id: '',
     image_url: ''
   });
@@ -61,6 +67,7 @@ const Items = () => {
     name: '',
     category: '',
     price: '',
+    quantity: '',
     distributor_id: '',
     image_url: ''
   });
@@ -99,6 +106,7 @@ const Items = () => {
         item.name.toLowerCase().includes(searchLower) ||
         item.category.toLowerCase().includes(searchLower) ||
         item.price.toString().includes(searchLower) ||
+        (item.quantity ?? 0).toString().includes(searchLower) ||
         item.distributor_id.toLowerCase().includes(searchLower)
       );
     }
@@ -138,6 +146,7 @@ const Items = () => {
       name: item.name,
       category: item.category,
       price: item.price.toString(),
+      quantity: (item.quantity ?? 0).toString(),
       distributor_id: item.distributor_id,
       image_url: item.image_url
     });
@@ -158,18 +167,19 @@ const Items = () => {
           ? { 
               ...item, 
               ...editForm, 
-              price: parseFloat(editForm.price) 
+              price: parseFloat(editForm.price),
+              quantity: parseInt(editForm.quantity || '0', 10)
             }
           : item
       ));
       setEditingItem(null);
-      setEditForm({ name: '', category: '', price: '', distributor_id: '', image_url: '' });
+      setEditForm({ name: '', category: '', price: '', quantity: '', distributor_id: '', image_url: '' });
     }
   };
 
   const handleCancelEdit = () => {
     setEditingItem(null);
-    setEditForm({ name: '', category: '', price: '', distributor_id: '', image_url: '' });
+    setEditForm({ name: '', category: '', price: '', quantity: '', distributor_id: '', image_url: '' });
   };
 
   const handleDeleteClick = (item) => {
@@ -213,18 +223,19 @@ const Items = () => {
         name: addForm.name,
         category: addForm.category,
         price: parseFloat(addForm.price),
+        quantity: parseInt(addForm.quantity || '0', 10),
         distributor_id: addForm.distributor_id,
         image_url: addForm.image_url || 'https://via.placeholder.com/50x50?text=No+Image'
       };
       setItems(prev => [...prev, newItem]);
       setAddingItem(false);
-      setAddForm({ name: '', category: '', price: '', distributor_id: '', image_url: '' });
+      setAddForm({ name: '', category: '', price: '', quantity: '', distributor_id: '', image_url: '' });
     }
   };
 
   const handleCancelAdd = () => {
     setAddingItem(false);
-    setAddForm({ name: '', category: '', price: '', distributor_id: '', image_url: '' });
+    setAddForm({ name: '', category: '', price: '', quantity: '', distributor_id: '', image_url: '' });
   };
 
   const getSortIcon = (key) => {
@@ -327,6 +338,12 @@ const Items = () => {
                 </th>
                 <th 
                   className="sortable" 
+                  onClick={() => handleSort('quantity')}
+                >
+                  Stock {getSortIcon('quantity')}
+                </th>
+                <th 
+                  className="sortable" 
                   onClick={() => handleSort('price')}
                 >
                   Price {getSortIcon('price')}
@@ -352,6 +369,7 @@ const Items = () => {
                     <td>{item.id}</td>
                     <td>{item.name}</td>
                     <td>{item.category}</td>
+                    <td>{item.quantity ?? 0}</td>
                     <td>${item.price.toFixed(2)}</td>
                     <td>{item.distributor_id}</td>
                     <td>
@@ -439,6 +457,19 @@ const Items = () => {
                     id="price"
                     name="price"
                     value={editForm.price}
+                    onChange={handleEditFormChange}
+                    className="form-input"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="quantity">Stock</label>
+                  <input
+                    type="number"
+                    min="0"
+                    id="quantity"
+                    name="quantity"
+                    value={editForm.quantity}
                     onChange={handleEditFormChange}
                     className="form-input"
                   />
