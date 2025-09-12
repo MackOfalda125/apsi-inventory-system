@@ -1,52 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Layout from '../../components/layout/layout';
+import { invoicesAPI, ordersAPI } from '../../services/api';
 import './invoices.css';
 
-const ORDER_ID_TO_CUSTOMER = {
-  501: 'Alice Smith',
-  502: 'Bob Johnson',
-  503: 'Charlie Davis',
-  504: 'Diana Miller'
-};
-
-const getCustomerName = (orderId) => ORDER_ID_TO_CUSTOMER[orderId] || '—';
-
 const Invoices = () => {
-
-  const [invoices, setInvoices] = useState([
-    {
-      id: 1001,
-      order_id: 501,
-      total_amount: 125.5,
-      status: 'paid',
-      issued_at: '2025-08-01T10:15:00Z',
-      paid_at: '2025-08-02T14:30:00Z'
-    },
-    {
-      id: 1002,
-      order_id: 502,
-      total_amount: 89.99,
-      status: 'unpaid',
-      issued_at: '2025-08-03T09:00:00Z',
-      paid_at: null
-    },
-    {
-      id: 1003,
-      order_id: 503,
-      total_amount: 310.0,
-      status: 'paid',
-      issued_at: '2025-08-04T12:45:00Z',
-      paid_at: '2025-08-05T08:10:00Z'
-    },
-    {
-      id: 1004,
-      order_id: 504,
-      total_amount: 49.0,
-      status: 'unpaid',
-      issued_at: '2025-08-06T16:20:00Z',
-      paid_at: null
-    }
-  ]);
+  const [invoices, setInvoices] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [statusFilter, setStatusFilter] = useState('all');
@@ -69,6 +30,11 @@ const Invoices = () => {
     issued_at: '',
     paid_at: ''
   });
+
+  // Fetch invoices on component mount
+  useEffect(() => {
+    invoicesAPI.fetchInvoices(setLoading, setError, setInvoices);
+  }, []);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -112,11 +78,11 @@ const Invoices = () => {
     const term = searchTerm.trim().toLowerCase();
     if (term) {
       list = list.filter((inv) =>
-        inv.id.toString().includes(term) ||
-        inv.order_id.toString().includes(term) ||
-        inv.total_amount.toString().includes(term) ||
-        inv.status.toLowerCase().includes(term) ||
-        getCustomerName(inv.order_id).toLowerCase().includes(term) ||
+        String(inv.id || '').includes(term) ||
+        String(inv.order_id || '').includes(term) ||
+        String(inv.total_amount || 0).includes(term) ||
+        String(inv.status || '').toLowerCase().includes(term) ||
+        String(inv.customer_name || '').toLowerCase().includes(term) ||       
         formatDateTime(inv.issued_at).toLowerCase().includes(term) ||
         formatDateTime(inv.paid_at).toLowerCase().includes(term)
       );
@@ -133,8 +99,8 @@ const Invoices = () => {
         let bVal = b[key];
 
         if (key === 'customer_name') {
-          aVal = getCustomerName(a.order_id);
-          bVal = getCustomerName(b.order_id);
+          aVal = a.customer_name;
+          bVal = b.customer_name;
         }
 
         if (key === 'issued_at' || key === 'paid_at') {
@@ -154,7 +120,7 @@ const Invoices = () => {
     }
 
     return list;
-  }, [invoices, searchTerm, statusFilter, sortConfig]);
+  }, [invoices, orders, searchTerm, statusFilter, sortConfig]);
 
   const toDatetimeLocalValue = (isoString) => {
     if (!isoString) return '';
@@ -192,22 +158,28 @@ const Invoices = () => {
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingInvoice) return;
-    setInvoices((prev) => prev.map((inv) => (
-      inv.id === editingInvoice.id
-        ? {
-            ...inv,
-            order_id: parseInt(editForm.order_id || '0', 10),
-            total_amount: parseFloat(editForm.total_amount || '0'),
-            status: editForm.status,
-            issued_at: fromDatetimeLocalToISO(editForm.issued_at),
-            paid_at: editForm.status === 'paid' ? fromDatetimeLocalToISO(editForm.paid_at) : null,
-          }
-        : inv
-    )));
-    setEditingInvoice(null);
-    setEditForm({ order_id: '', total_amount: '', status: 'unpaid', issued_at: '', paid_at: '' });
+    
+    const invoiceData = {
+      order_id: parseInt(editForm.order_id || '0', 10),
+      total_amount: parseFloat(editForm.total_amount || '0'),
+      status: editForm.status,
+      issued_at: fromDatetimeLocalToISO(editForm.issued_at),
+      paid_at: editForm.status === 'paid' ? fromDatetimeLocalToISO(editForm.paid_at) : null,
+    };
+
+    const result = await invoicesAPI.updateInvoiceWithState(
+      editingInvoice.id,
+      invoiceData,
+      setInvoices,
+      setEditingInvoice,
+      setEditForm
+    );
+
+    if (!result.success) {
+      alert(`Error updating invoice: ${result.error}`);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -219,10 +191,18 @@ const Invoices = () => {
     setDeletingInvoice(inv);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deletingInvoice) return;
-    setInvoices((prev) => prev.filter((inv) => inv.id !== deletingInvoice.id));
-    setDeletingInvoice(null);
+    
+    const result = await invoicesAPI.deleteInvoiceWithState(
+      deletingInvoice.id,
+      setInvoices,
+      setDeletingInvoice
+    );
+
+    if (!result.success) {
+      alert(`Error deleting invoice: ${result.error}`);
+    }
   };
 
   const handleCancelDelete = () => setDeletingInvoice(null);
@@ -237,20 +217,27 @@ const Invoices = () => {
     setAddForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveAdd = () => {
+  const handleSaveAdd = async () => {
     if (!addForm.order_id || !addForm.total_amount || !addForm.issued_at) return;
-    const nextId = (Math.max(0, ...invoices.map((i) => i.id)) || 0) + 1;
-    const newInvoice = {
-      id: nextId,
+    
+    const invoiceData = {
       order_id: parseInt(addForm.order_id || '0', 10),
       total_amount: parseFloat(addForm.total_amount || '0'),
       status: addForm.status,
       issued_at: fromDatetimeLocalToISO(addForm.issued_at),
       paid_at: addForm.status === 'paid' ? fromDatetimeLocalToISO(addForm.paid_at) : null,
     };
-    setInvoices((prev) => [...prev, newInvoice]);
-    setAddingInvoice(false);
-    setAddForm({ order_id: '', total_amount: '', status: 'unpaid', issued_at: '', paid_at: '' });
+
+    const result = await invoicesAPI.createInvoiceWithState(
+      invoiceData,
+      setInvoices,
+      setAddingInvoice,
+      setAddForm
+    );
+
+    if (!result.success) {
+      alert(`Error creating invoice: ${result.error}`);
+    }
   };
 
   const handleCancelAdd = () => {
@@ -343,7 +330,7 @@ const Invoices = () => {
                   <tr key={inv.id}>
                     <td>{inv.id}</td>
                     <td>{inv.order_id}</td>
-                    <td>{getCustomerName(inv.order_id)}</td>
+                    <td>{inv.customer_name || '—'}</td>
                     <td>${inv.total_amount.toFixed(2)}</td>
                     <td>
                       <span className={`status-badge ${inv.status === 'paid' ? 'status-paid' : 'status-unpaid'}`}>
@@ -506,7 +493,7 @@ const Invoices = () => {
                   <h4>Invoice Details:</h4>
                   <div className="detail-item"><strong>Invoice ID:</strong> {deletingInvoice.id}</div>
                   <div className="detail-item"><strong>Order ID:</strong> {deletingInvoice.order_id}</div>
-                  <div className="detail-item"><strong>Customer:</strong> {getCustomerName(deletingInvoice.order_id)}</div>
+                  <div className="detail-item"><strong>Customer:</strong> {deletingInvoice.customer_name || '—'}</div>
                   <div className="detail-item"><strong>Total Amount:</strong> ${deletingInvoice.total_amount.toFixed(2)}</div>
                   <div className="detail-item"><strong>Status:</strong> {deletingInvoice.status}</div>
                 </div>

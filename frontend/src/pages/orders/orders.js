@@ -1,100 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Layout from '../../components/layout/layout';
+import { ordersAPI } from '../../services/api';
 import './orders.css';
 
 const Orders = () => {
-  // Sample items from Items page for selector
-  const availableItems = useMemo(() => ([
-    {
-      id: 1,
-      name: 'Abyssal Mask',
-      category: 'Magic',
-      price: 2650.00,
-      distributor_id: 'DIST001',
-      image_url: 'https://wiki.leagueoflegends.com/en-us/images/Abyssal_Mask_item.png?aac97'
-    },
-    {
-      id: 2,
-      name: "Archangel's Staff",
-      category: 'Magic',
-      price: 2900.00,
-      distributor_id: 'DIST002',
-      image_url: 'https://wiki.leagueoflegends.com/en-us/images/Archangel%27s_Staff_item.png?df623'
-    },
-    {
-      id: 3,
-      name: 'Ardent Censer',
-      category: 'Magic',
-      price: 2200.00,
-      distributor_id: 'DIST003',
-      image_url: 'https://wiki.leagueoflegends.com/en-us/images/Ardent_Censer_item.png?aa186'
-    },
-    {
-      id: 4,
-      name: 'Axiom Arc',
-      category: 'Damage',
-      price: 2750.00,
-      distributor_id: 'DIST001',
-      image_url: 'https://wiki.leagueoflegends.com/en-us/images/Axiom_Arc_item.png?faf11'
-    },
-    {
-      id: 5,
-      name: "Banshee's Veil",
-      category: 'Magic',
-      price: 3000,
-      distributor_id: 'DIST002',
-      image_url: 'https://wiki.leagueoflegends.com/en-us/images/Banshee%27s_Veil_item.png?47857'
-    }
-  ]), []);
-
-  const [orders, setOrders] = useState(() => {
-    const i = availableItems;
-    const itemsA = i.slice(0, 3).map((it, idx) => ({ id: it.id, name: it.name, price: it.price, quantity: idx === 0 ? 1 : 2 }));
-    const itemsB = i.slice(1, 4).map((it, idx) => ({ id: it.id, name: it.name, price: it.price, quantity: idx === 2 ? 3 : 1 }));
-    const itemsC = i.slice(2, 5).map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: 1 }));
-    return [
-      {
-        id: 1001,
-        customer_name: 'Ahri Nine Tails',
-        date: '2025-09-01',
-        status: 'pending',
-        staff_id: 'STF001',
-        items: itemsA
-      },
-      {
-        id: 1002,
-        customer_name: 'Garen Crownguard',
-        date: '2025-08-28',
-        status: 'fulfilled',
-        staff_id: 'STF002',
-        items: itemsB
-      },
-      {
-        id: 1003,
-        customer_name: 'Jinx Zaun',
-        date: '2025-09-03',
-        status: 'dispatched',
-        staff_id: 'STF003',
-        items: itemsC
-      },
-      {
-        id: 1004,
-        customer_name: 'Lux Crownguard',
-        date: '2025-07-19',
-        status: 'cancelled',
-        staff_id: 'STF002',
-        items: []
-      },
-      {
-        id: 1005,
-        customer_name: 'Yasuo Wanderer',
-        date: '2025-09-07',
-        status: 'pending',
-        staff_id: 'STF001',
-        items: itemsA
-      }
-    ];
-  });
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
   const [filterStatus, setFilterStatus] = useState('all');
@@ -123,6 +35,11 @@ const Orders = () => {
   const [editItemSearchTerm, setEditItemSearchTerm] = useState('');
 
   const allStatuses = useMemo(() => ['all', 'pending', 'fulfilled', 'dispatched', 'cancelled'], []);
+
+  // Fetch orders on component mount
+  useEffect(() => {
+    ordersAPI.fetchOrders(setLoading, setError, setOrders);
+  }, []);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -177,12 +94,12 @@ const Orders = () => {
     if (searchTerm.trim()) {
       const query = searchTerm.toLowerCase();
       filtered = filtered.filter((order) =>
-        order.id.toString().includes(query) ||
-        order.customer_name.toLowerCase().includes(query) ||
-        order.status.toLowerCase().includes(query) ||
-        (order.items || []).reduce((sum, it) => sum + it.price * it.quantity, 0).toString().includes(query) ||
-        order.staff_id.toLowerCase().includes(query) ||
-        order.date.toString().includes(query)
+        String(order.id || '').includes(query) ||
+        String(order.customer_name || '').toLowerCase().includes(query) ||
+        String(order.status || '').toLowerCase().includes(query) ||
+        String((order.items || []).reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0)).includes(query) ||
+        String(order.staff_id || '').toLowerCase().includes(query) ||
+        String(order.date || '').includes(query)
       );
     }
 
@@ -217,24 +134,10 @@ const Orders = () => {
     return filtered;
   };
 
-  const filteredAvailableItems = useMemo(() => {
-    const q = itemSearchTerm.trim().toLowerCase();
-    if (!q) return availableItems;
-    return availableItems.filter((it) =>
-      it.id.toString().includes(q) ||
-      it.name.toLowerCase().includes(q) ||
-      it.category.toLowerCase().includes(q) ||
-      it.price.toString().includes(q) ||
-      it.distributor_id.toLowerCase().includes(q)
-    );
-  }, [availableItems, itemSearchTerm]);
-
   const handleAddOrderClick = () => {
     setAddingOrder(true);
     setOrderForm({ customer_name: '', staff_id: '', status: 'pending' });
-    // Initialize with three items (first three from availableItems, qty 1)
-    const initial = availableItems.slice(0, 3).map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: 1 }));
-    setSelectedItems(initial);
+    setSelectedItems([]);
     setItemSearchTerm('');
   };
 
@@ -272,24 +175,33 @@ const Orders = () => {
     return selectedItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
   };
 
-  const handleSaveOrder = () => {
+  const handleSaveOrder = async () => {
     if (!orderForm.customer_name || !orderForm.staff_id || selectedItems.length === 0) {
       return;
     }
-    const nextId = orders.length ? Math.max(...orders.map((o) => o.id)) + 1 : 1001;
-    const newOrder = {
-      id: nextId,
+
+    const orderData = {
       customer_name: orderForm.customer_name,
-      date: new Date().toISOString().slice(0, 10),
-      status: orderForm.status,
       staff_id: orderForm.staff_id,
-      items: selectedItems.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity }))
+      status: orderForm.status,
+      items: selectedItems.map((it) => ({ 
+        id: it.id, 
+        name: it.name, 
+        price: it.price, 
+        quantity: it.quantity 
+      }))
     };
-    setOrders((prev) => [...prev, newOrder]);
-    setAddingOrder(false);
-    setSelectedItems([]);
-    setOrderForm({ customer_name: '', staff_id: '', status: 'pending' });
-    setItemSearchTerm('');
+
+    const result = await ordersAPI.createOrderWithState(
+      orderData,
+      setOrders,
+      setAddingOrder,
+      setOrderForm
+    );
+
+    if (!result.success) {
+      alert(`Error creating order: ${result.error}`);
+    }
   };
 
   const handleEditClick = (order) => {
@@ -300,9 +212,7 @@ const Orders = () => {
       status: order.status,
       staff_id: order.staff_id
     });
-    // Initialize edit items (3 default items for visualization)
-    const initialEditItems = availableItems.slice(0, 3).map((it, idx) => ({ id: it.id, name: it.name, price: it.price, quantity: idx === 1 ? 2 : 1 }));
-    setEditItems(initialEditItems);
+    setEditItems(order.items || []);
     setEditItemSearchTerm('');
   };
 
@@ -311,14 +221,30 @@ const Orders = () => {
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingOrder) return;
-    setOrders((prev) => prev.map((o) => (
-      o.id === editingOrder.id
-        ? { ...o, ...editForm, items: editItems.map((it) => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity })) }
-        : o
-    )));
-    setEditingOrder(null);
+    
+    const orderData = {
+      ...editForm,
+      items: editItems.map((it) => ({ 
+        id: it.id, 
+        name: it.name, 
+        price: it.price, 
+        quantity: it.quantity 
+      }))
+    };
+
+    const result = await ordersAPI.updateOrderWithState(
+      editingOrder.id,
+      orderData,
+      setOrders,
+      setEditingOrder,
+      setEditForm
+    );
+
+    if (!result.success) {
+      alert(`Error updating order: ${result.error}`);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -329,10 +255,18 @@ const Orders = () => {
     setDeletingOrder(order);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deletingOrder) return;
-    setOrders((prev) => prev.filter((o) => o.id !== deletingOrder.id));
-    setDeletingOrder(null);
+    
+    const result = await ordersAPI.deleteOrderWithState(
+      deletingOrder.id,
+      setOrders,
+      setDeletingOrder
+    );
+
+    if (!result.success) {
+      alert(`Error deleting order: ${result.error}`);
+    }
   };
 
   const handleCancelDelete = () => {
@@ -340,18 +274,6 @@ const Orders = () => {
   };
 
   // Edit item selector helpers
-  const filteredEditAvailableItems = useMemo(() => {
-    const q = editItemSearchTerm.trim().toLowerCase();
-    if (!q) return availableItems;
-    return availableItems.filter((it) =>
-      it.id.toString().includes(q) ||
-      it.name.toLowerCase().includes(q) ||
-      it.category.toLowerCase().includes(q) ||
-      it.price.toString().includes(q) ||
-      it.distributor_id.toLowerCase().includes(q)
-    );
-  }, [availableItems, editItemSearchTerm]);
-
   const handleAddItemToEdit = (item) => {
     setEditItems((prev) => {
       const existing = prev.find((p) => p.id === item.id);
@@ -398,7 +320,6 @@ const Orders = () => {
                 </div>
               </div>
 
-              {/* Status filter removed from header; filter is available in Status column header */}
               <button 
                 className="add-order-btn"
                 onClick={handleAddOrderClick}
@@ -414,97 +335,114 @@ const Orders = () => {
         </div>
 
         <div className="orders-table-container">
-          <table className="orders-table">
-            <thead>
-              <tr>
-                <th className="sortable" onClick={() => handleSort('id')}>
-                  Order ID {getSortIcon('id')}
-                </th>
-                <th className="sortable" onClick={() => handleSort('customer_name')}>
-                  Customer Name {getSortIcon('customer_name')}
-                </th>
-                <th className="sortable" onClick={() => handleSort('date')}>
-                  Date {getSortIcon('date')}
-                </th>
-                <th className="status-header">
-                  <div className="status-header-content">
-                    <span className="sortable" onClick={() => handleSort('status')}>
-                      Status {getSortIcon('status')}
-                    </span>
-                    <select 
-                      value={filterStatus} 
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="status-filter-select"
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label="Filter by status"
-                    >
-                      {allStatuses.map((s) => (
-                        <option key={s} value={s}>
-                          {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </th>
-                <th className="sortable" onClick={() => handleSort('total_amount')}>
-                  Total Amount {getSortIcon('total_amount')}
-                </th>
-                <th className="sortable" onClick={() => handleSort('staff_id')}>
-                  Staff ID {getSortIcon('staff_id')}
-                </th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {getSortedAndFilteredOrders().length > 0 ? (
-                getSortedAndFilteredOrders().map((order) => (
-                  <tr key={order.id}>
-                    <td>{order.id}</td>
-                    <td>{order.customer_name}</td>
-                    <td>{new Date(order.date).toLocaleDateString()}</td>
-                    <td>
-                      <span className={getStatusBadgeClass(order.status)}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Loading orders...</p>
+            </div>
+          ) : error ? (
+            <div className="error-container">
+              <div className="error-content">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="error-icon">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="15" y1="9" x2="9" y2="15"/>
+                  <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+                <p className="error-message">{error}</p>
+                <button className="retry-btn" onClick={() => ordersAPI.fetchOrders(setLoading, setError, setOrders)}>
+                  Try Again
+                </button>
+              </div>
+            </div>
+          ) : (
+            <table className="orders-table">
+              <thead>
+                <tr>
+                  <th className="sortable" onClick={() => handleSort('id')}>
+                    Order ID {getSortIcon('id')}
+                  </th>
+                  <th className="sortable" onClick={() => handleSort('customer_name')}>
+                    Customer Name {getSortIcon('customer_name')}
+                  </th>
+                  <th className="sortable" onClick={() => handleSort('date')}>
+                    Date {getSortIcon('date')}
+                  </th>
+                  <th className="status-header">
+                    <div className="status-header-content">
+                      <span className="sortable" onClick={() => handleSort('status')}>
+                        Status {getSortIcon('status')}
                       </span>
-                    </td>
-                    <td>${((order.items || []).reduce((sum, it) => sum + it.price * it.quantity, 0)).toFixed(2)}</td>
-                    <td>{order.staff_id}</td>
-                    <td>
-                      <div className="action-buttons">
-                        <button 
-                          className="edit-btn"
-                          onClick={() => handleEditClick(order)}
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          className="delete-btn"
-                          onClick={() => handleDeleteClick(order)}
-                        >
-                          Delete
-                        </button>
+                      <select 
+                        value={filterStatus} 
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="status-filter-select"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label="Filter by status"
+                      >
+                        {allStatuses.map((s) => (
+                          <option key={s} value={s}>
+                            {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </th>
+                  <th className="sortable" onClick={() => handleSort('total_amount')}>
+                    Total Amount {getSortIcon('total_amount')}
+                  </th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getSortedAndFilteredOrders().length > 0 ? (
+                  getSortedAndFilteredOrders().map((order) => (
+                    <tr key={order.id}>
+                      <td>{order.id}</td>
+                      <td>{order.customer_name}</td>
+                      <td>{new Date(order.date).toLocaleDateString()}</td>
+                      <td>
+                        <span className={getStatusBadgeClass(order.status)}>
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </span>
+                      </td>
+                      <td>${Number(order.total_amount || 0).toFixed(2)}</td>
+                      <td>
+                        <div className="action-buttons">
+                          <button 
+                            className="edit-btn"
+                            onClick={() => handleEditClick(order)}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="delete-btn"
+                            onClick={() => handleDeleteClick(order)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="no-results-row">
+                    <td colSpan="7" className="no-results">
+                      <div className="no-results-content">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="no-results-icon">
+                          <circle cx="11" cy="11" r="8"/>
+                          <path d="m21 21-4.35-4.35"/>
+                          <line x1="11" y1="8" x2="11" y2="14"/>
+                          <line x1="8" y1="11" x2="14" y2="11"/>
+                        </svg>
+                        <p>No results found</p>
+                        <span>Try adjusting your search terms or filters</span>
                       </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr className="no-results-row">
-                  <td colSpan="6" className="no-results">
-                    <div className="no-results-content">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="no-results-icon">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                        <line x1="11" y1="8" x2="11" y2="14"/>
-                        <line x1="8" y1="11" x2="14" y2="11"/>
-                      </svg>
-                      <p>No results found</p>
-                      <span>Try adjusting your search terms or filters</span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
       {addingOrder && (
@@ -537,20 +475,6 @@ const Orders = () => {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="staff_id">Staff ID</label>
-                  <input
-                    type="text"
-                    id="staff_id"
-                    name="staff_id"
-                    value={orderForm.staff_id}
-                    onChange={handleOrderFormChange}
-                    className="form-input"
-                    placeholder="Enter staff ID"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
                   <label htmlFor="status">Status</label>
                   <select
                     id="status"
@@ -563,40 +487,6 @@ const Orders = () => {
                       <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                     ))}
                   </select>
-                </div>
-              </div>
-
-              <div className="item-selector">
-                <div className="selector-header">
-                  <h4>Select Items</h4>
-                  <div className="search-input-wrapper">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="search-icon">
-                      <circle cx="11" cy="11" r="8"/>
-                      <path d="m21 21-4.35-4.35"/>
-                    </svg>
-                    <input
-                      type="text"
-                      placeholder="Search items..."
-                      value={itemSearchTerm}
-                      onChange={(e) => setItemSearchTerm(e.target.value)}
-                      className="search-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="selector-list">
-                  {filteredAvailableItems.map((item) => (
-                    <div key={item.id} className="selector-list-item">
-                      <div className="selector-item-info">
-                        <img src={item.image_url} alt={item.name} className="selector-item-image" onError={(e) => { e.target.src = 'https://via.placeholder.com/40x40?text=No+Image'; }} />
-                        <div className="selector-item-text">
-                          <div className="selector-item-name">{item.name}</div>
-                          <div className="selector-item-meta">#{item.id} · ${item.price.toFixed(2)}</div>
-                        </div>
-                      </div>
-                      <button className="btn btn-primary btn-small" onClick={() => handleAddItemToOrder(item)}>Add</button>
-                    </div>
-                  ))}
                 </div>
               </div>
 
@@ -718,54 +608,10 @@ const Orders = () => {
                     ))}
                   </select>
                 </div>
-                <div className="form-group">
-                  <label htmlFor="edit_staff_id">Staff ID</label>
-                  <input
-                    type="text"
-                    id="edit_staff_id"
-                    name="staff_id"
-                    value={editForm.staff_id}
-                    onChange={handleEditFormChange}
-                    className="form-input"
-                  />
-                </div>
-              </div>
-
-              <div className="item-selector">
-                <div className="selector-header">
-                  <h4>Order Items</h4>
-                  <div className="search-input-wrapper">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="search-icon">
-                      <circle cx="11" cy="11" r="8"/>
-                      <path d="m21 21-4.35-4.35"/>
-                    </svg>
-                    <input
-                      type="text"
-                      placeholder="Search items..."
-                      value={editItemSearchTerm}
-                      onChange={(e) => setEditItemSearchTerm(e.target.value)}
-                      className="search-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="selector-list">
-                  {filteredEditAvailableItems.map((item) => (
-                    <div key={item.id} className="selector-list-item">
-                      <div className="selector-item-info">
-                        <img src={item.image_url} alt={item.name} className="selector-item-image" onError={(e) => { e.target.src = 'https://via.placeholder.com/40x40?text=No+Image'; }} />
-                        <div className="selector-item-text">
-                          <div className="selector-item-name">{item.name}</div>
-                          <div className="selector-item-meta">#{item.id} · ${item.price.toFixed(2)}</div>
-                        </div>
-                      </div>
-                      <button className="btn btn-primary btn-small" onClick={() => handleAddItemToEdit(item)}>Add</button>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               <div className="order-preview">
+                <h4>Order Items</h4>
                 <div className="orders-table-container">
                   <table className="orders-table">
                     <thead>
@@ -859,7 +705,7 @@ const Orders = () => {
                 <div className="detail-item"><strong>Order ID:</strong> {deletingOrder.id}</div>
                 <div className="detail-item"><strong>Customer:</strong> {deletingOrder.customer_name}</div>
                 <div className="detail-item"><strong>Status:</strong> {deletingOrder.status}</div>
-                <div className="detail-item"><strong>Total:</strong> ${deletingOrder.total_amount.toFixed(2)}</div>
+                <div className="detail-item"><strong>Total:</strong> ${Number(deletingOrder.total_amount || 0).toFixed(2)}</div>
               </div>
             </div>
             <div className="delete-modal-footer">
@@ -874,5 +720,3 @@ const Orders = () => {
 };
 
 export default Orders;
-
-

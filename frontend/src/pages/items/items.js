@@ -1,63 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../../components/layout/layout';
+import { itemsAPI } from '../../services/api';
 import './items.css';
 
 const Items = () => {
-  // Sample item data
-  const [items, setItems] = useState([
-    {
-      id: 1,
-      name: 'Abyssal Mask',
-      category: 'Magic',
-      price: 2650.00,
-      quantity: 12,
-      distributor_id: 'DIST001',
-      image_url: 'https://wiki.leagueoflegends.com/en-us/images/Abyssal_Mask_item.png?aac97'
-    },
-    {
-      id: 2,
-      name: 'Archangel\'s Staff',
-      category: 'Magic',
-      price: 2900.00,
-      quantity: 8,
-      distributor_id: 'DIST002',
-      image_url: 'https://wiki.leagueoflegends.com/en-us/images/Archangel%27s_Staff_item.png?df623'
-    },
-    {
-      id: 3,
-      name: 'Ardent Censer',
-      category: 'Magic',
-      price: 2200.00,
-      quantity: 15,
-      distributor_id: 'DIST003',
-      image_url: 'https://wiki.leagueoflegends.com/en-us/images/Ardent_Censer_item.png?aa186'
-    },
-    {
-      id: 4,
-      name: 'Axiom Arc',
-      category: 'Damage',
-      price: 2750.00,
-      quantity: 5,
-      distributor_id: 'DIST001',
-      image_url: 'https://wiki.leagueoflegends.com/en-us/images/Axiom_Arc_item.png?faf11'
-    },
-    {
-      id: 5,
-      name: 'Banshee\'s Veil',
-      category: 'Magic',
-      price: 3000,
-      quantity: 20,
-      distributor_id: 'DIST002',
-      image_url: 'https://wiki.leagueoflegends.com/en-us/images/Banshee%27s_Veil_item.png?47857'
-    }
-  ]);
+  // Item data state
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({
     name: '',
     category: '',
     price: '',
-    quantity: '',
+    stock: '',
     distributor_id: '',
     image_url: ''
   });
@@ -67,7 +24,7 @@ const Items = () => {
     name: '',
     category: '',
     price: '',
-    quantity: '',
+    stock: '',
     distributor_id: '',
     image_url: ''
   });
@@ -76,6 +33,11 @@ const Items = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [filterCategory, setFilterCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Fetch items on component mount
+  useEffect(() => {
+    itemsAPI.fetchItems(setLoading, setError, setItems);
+  }, []);
 
   // Get unique categories for filter
   const categories = ['all', ...new Set(items.map(item => item.category))];
@@ -102,12 +64,12 @@ const Items = () => {
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
       filteredItems = filteredItems.filter(item => 
-        item.id.toString().includes(searchLower) ||
-        item.name.toLowerCase().includes(searchLower) ||
-        item.category.toLowerCase().includes(searchLower) ||
-        item.price.toString().includes(searchLower) ||
-        (item.quantity ?? 0).toString().includes(searchLower) ||
-        item.distributor_id.toLowerCase().includes(searchLower)
+        String(item.id || '').includes(searchLower) ||
+        String(item.name || '').toLowerCase().includes(searchLower) ||
+        String(item.category || '').toLowerCase().includes(searchLower) ||
+        String(item.price || '').includes(searchLower) ||
+        String(item.stock || 0).includes(searchLower) ||
+        String(item.distributor_id || '').toLowerCase().includes(searchLower)
       );
     }
     
@@ -123,8 +85,8 @@ const Items = () => {
         let bValue = b[sortConfig.key];
 
         if (typeof aValue === 'string') {
-          aValue = aValue.toLowerCase();
-          bValue = bValue.toLowerCase();
+          aValue = String(aValue || '').toLowerCase();
+          bValue = String(bValue || '').toLowerCase();
         }
 
         if (aValue < bValue) {
@@ -143,12 +105,12 @@ const Items = () => {
   const handleEditClick = (item) => {
     setEditingItem(item);
     setEditForm({
-      name: item.name,
-      category: item.category,
-      price: item.price.toString(),
-      quantity: (item.quantity ?? 0).toString(),
-      distributor_id: item.distributor_id,
-      image_url: item.image_url
+      name: String(item.name || ''),
+      category: String(item.category || ''),
+      price: String(item.price || ''),
+      stock: String(item.stock || 0),
+      distributor_id: String(item.distributor_id || ''),
+      image_url: String(item.image_url || '')
     });
   };
 
@@ -160,36 +122,45 @@ const Items = () => {
     }));
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingItem) {
-      setItems(prev => prev.map(item => 
-        item.id === editingItem.id 
-          ? { 
-              ...item, 
-              ...editForm, 
-              price: parseFloat(editForm.price),
-              quantity: parseInt(editForm.quantity || '0', 10)
-            }
-          : item
-      ));
-      setEditingItem(null);
-      setEditForm({ name: '', category: '', price: '', quantity: '', distributor_id: '', image_url: '' });
+      const itemData = {
+        ...editForm,
+        price: parseFloat(String(editForm.price || 0)),
+        stock: parseInt(String(editForm.stock || 0), 10)
+      };
+      const result = await itemsAPI.updateItemWithState(
+        editingItem.id,
+        itemData,
+        setItems,
+        setEditingItem,
+        setEditForm
+      );
+      if (!result.success) {
+        alert(`Error updating item: ${result.error}`);
+      }
     }
   };
 
   const handleCancelEdit = () => {
     setEditingItem(null);
-    setEditForm({ name: '', category: '', price: '', quantity: '', distributor_id: '', image_url: '' });
+    setEditForm({ name: '', category: '', price: '', stock: '', distributor_id: '', image_url: '' });
   };
 
   const handleDeleteClick = (item) => {
     setDeletingItem(item);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deletingItem) {
-      setItems(prev => prev.filter(item => item.id !== deletingItem.id));
-      setDeletingItem(null);
+      const result = await itemsAPI.deleteItemWithState(
+        deletingItem.id,
+        setItems,
+        setDeletingItem
+      );
+      if (!result.success) {
+        alert(`Error deleting item: ${result.error}`);
+      }
     }
   };
 
@@ -216,26 +187,31 @@ const Items = () => {
     }));
   };
 
-  const handleSaveAdd = () => {
+  const handleSaveAdd = async () => {
     if (addForm.name && addForm.category && addForm.price && addForm.distributor_id) {
-      const newItem = {
-        id: Math.max(...items.map(item => item.id)) + 1,
-        name: addForm.name,
-        category: addForm.category,
-        price: parseFloat(addForm.price),
-        quantity: parseInt(addForm.quantity || '0', 10),
-        distributor_id: addForm.distributor_id,
-        image_url: addForm.image_url || 'https://via.placeholder.com/50x50?text=No+Image'
+      const itemData = {
+        name: String(addForm.name || ''),
+        category: String(addForm.category || ''),
+        price: parseFloat(String(addForm.price || 0)),
+        stock: parseInt(String(addForm.stock || 0), 10),
+        distributor_id: String(addForm.distributor_id || ''),
+        image_url: String(addForm.image_url || 'https://via.placeholder.com/50x50?text=No+Image')
       };
-      setItems(prev => [...prev, newItem]);
-      setAddingItem(false);
-      setAddForm({ name: '', category: '', price: '', quantity: '', distributor_id: '', image_url: '' });
+      const result = await itemsAPI.createItemWithState(
+        itemData,
+        setItems,
+        setAddingItem,
+        setAddForm
+      );
+      if (!result.success) {
+        alert(`Error creating item: ${result.error}`);
+      }
     }
   };
 
   const handleCancelAdd = () => {
     setAddingItem(false);
-    setAddForm({ name: '', category: '', price: '', quantity: '', distributor_id: '', image_url: '' });
+    setAddForm({ name: '', category: '', price: '', stock: '', distributor_id: '', image_url: '' });
   };
 
   const getSortIcon = (key) => {
@@ -298,116 +274,137 @@ const Items = () => {
 
 
         <div className="items-table-container">
-          <table className="items-table">
-            <thead>
-              <tr>
-                <th>Image</th>
-                <th 
-                  className="sortable" 
-                  onClick={() => handleSort('id')}
-                >
-                  Item ID {getSortIcon('id')}
-                </th>
-                <th 
-                  className="sortable" 
-                  onClick={() => handleSort('name')}
-                >
-                  Name {getSortIcon('name')}
-                </th>
-                <th className="category-header">
-                  <div className="category-header-content">
-                    <span 
-                      className="sortable" 
-                      onClick={() => handleSort('category')}
-                    >
-                      Category {getSortIcon('category')}
-                    </span>
-                    <select 
-                      value={filterCategory} 
-                      onChange={(e) => setFilterCategory(e.target.value)}
-                      className="category-filter-select"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {categories.map(category => (
-                        <option key={category} value={category}>
-                          {category === 'all' ? 'All' : category}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </th>
-                <th 
-                  className="sortable" 
-                  onClick={() => handleSort('quantity')}
-                >
-                  Stock {getSortIcon('quantity')}
-                </th>
-                <th 
-                  className="sortable" 
-                  onClick={() => handleSort('price')}
-                >
-                  Price {getSortIcon('price')}
-                </th>
-                <th>Distributor ID</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {getSortedAndFilteredItems().length > 0 ? (
-                getSortedAndFilteredItems().map(item => (
-                  <tr key={item.id}>
-                    <td className="item-image-cell">
-                      <img 
-                        src={item.image_url} 
-                        alt={item.name}
-                        className="item-image"
-                        onError={(e) => {
-                          e.target.src = 'https://via.placeholder.com/50x50?text=No+Image';
-                        }}
-                      />
-                    </td>
-                    <td>{item.id}</td>
-                    <td>{item.name}</td>
-                    <td>{item.category}</td>
-                    <td>{item.quantity ?? 0}</td>
-                    <td>${item.price.toFixed(2)}</td>
-                    <td>{item.distributor_id}</td>
-                    <td>
-                      <div className="action-buttons">
-                        <button 
-                          className="edit-btn"
-                          onClick={() => handleEditClick(item)}
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          className="delete-btn"
-                          onClick={() => handleDeleteClick(item)}
-                        >
-                          Delete
-                        </button>
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Loading items...</p>
+            </div>
+          ) : error ? (
+            <div className="error-container">
+              <div className="error-content">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="error-icon">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="15" y1="9" x2="9" y2="15"/>
+                  <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+                <p className="error-message">{error}</p>
+                <button className="retry-btn" onClick={() => itemsAPI.fetchItems(setLoading, setError, setItems)}>
+                  Try Again
+                </button>
+              </div>
+            </div>
+          ) : (
+            <table className="items-table">
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th 
+                    className="sortable" 
+                    onClick={() => handleSort('id')}
+                  >
+                    Item ID {getSortIcon('id')}
+                  </th>
+                  <th 
+                    className="sortable" 
+                    onClick={() => handleSort('name')}
+                  >
+                    Name {getSortIcon('name')}
+                  </th>
+                  <th className="category-header">
+                    <div className="category-header-content">
+                      <span 
+                        className="sortable" 
+                        onClick={() => handleSort('category')}
+                      >
+                        Category {getSortIcon('category')}
+                      </span>
+                      <select 
+                        value={filterCategory} 
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                        className="category-filter-select"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {categories.map(category => (
+                          <option key={category} value={category}>
+                            {category === 'all' ? 'All' : category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </th>
+                  <th 
+                    className="sortable" 
+                    onClick={() => handleSort('stock')}
+                  >
+                    Stock {getSortIcon('stock')}
+                  </th>
+                  <th 
+                    className="sortable" 
+                    onClick={() => handleSort('price')}
+                  >
+                    Price {getSortIcon('price')}
+                  </th>
+                  <th>Distributor ID</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getSortedAndFilteredItems().length > 0 ? (
+                  getSortedAndFilteredItems().map(item => (
+                    <tr key={item.id}>
+                      <td className="item-image-cell">
+                        <img 
+                          src={item.image_url} 
+                          alt={item.name}
+                          className="item-image"
+                          onError={(e) => {
+                            e.target.src = 'https://via.placeholder.com/50x50?text=No+Image';
+                          }}
+                        />
+                      </td>
+                      <td>{item.id}</td>
+                      <td>{item.name}</td>
+                      <td>{item.category}</td>
+                      <td>{item.stock ?? 0}</td>
+                      <td>${Number(String(item.price || 0)).toFixed(2)}</td>
+                      <td>{item.distributor_id}</td>
+                      <td>
+                        <div className="action-buttons">
+                          <button 
+                            className="edit-btn"
+                            onClick={() => handleEditClick(item)}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="delete-btn"
+                            onClick={() => handleDeleteClick(item)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="no-results-row">
+                    <td colSpan="8" className="no-results">
+                      <div className="no-results-content">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="no-results-icon">
+                          <circle cx="11" cy="11" r="8"/>
+                          <path d="m21 21-4.35-4.35"/>
+                          <line x1="11" y1="8" x2="11" y2="14"/>
+                          <line x1="8" y1="11" x2="14" y2="11"/>
+                        </svg>
+                        <p>No results found</p>
+                        <span>Try adjusting your search terms</span>
                       </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr className="no-results-row">
-                  <td colSpan="7" className="no-results">
-                    <div className="no-results-content">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="no-results-icon">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                        <line x1="11" y1="8" x2="11" y2="14"/>
-                        <line x1="8" y1="11" x2="14" y2="11"/>
-                      </svg>
-                      <p>No results found</p>
-                      <span>Try adjusting your search terms</span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Edit Modal */}
@@ -463,13 +460,13 @@ const Items = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor="quantity">Stock</label>
+                  <label htmlFor="stock">Stock</label>
                   <input
                     type="number"
                     min="0"
-                    id="quantity"
-                    name="quantity"
-                    value={editForm.quantity}
+                    id="stock"
+                    name="stock"
+                    value={editForm.stock}
                     onChange={handleEditFormChange}
                     className="form-input"
                   />
@@ -547,7 +544,7 @@ const Items = () => {
                     <strong>Category:</strong> {deletingItem.category}
                   </div>
                   <div className="detail-item">
-                    <strong>Price:</strong> ${deletingItem.price.toFixed(2)}
+                    <strong>Price:</strong> ${Number(String(deletingItem.price || 0)).toFixed(2)}
                   </div>
                   <div className="detail-item">
                     <strong>Distributor ID:</strong> {deletingItem.distributor_id}

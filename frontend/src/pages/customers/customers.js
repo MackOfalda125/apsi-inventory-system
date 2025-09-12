@@ -1,35 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../../components/layout/layout';
+import { customerAPI } from '../../services/api';
 import './customers.css';
 
 const Customers = () => {
-  // Sample customer data
-  const [customers, setCustomers] = useState([
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john.doe@email.com',
-      phone: '+1 (555) 123-4567',
-      address: '123 Main St, New York, NY 10001',
-      created_at: '2024-01-15 10:30:00'
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane.smith@email.com',
-      phone: '+1 (555) 987-6543',
-      address: '456 Oak Ave, Los Angeles, CA 90210',
-      created_at: '2024-01-20 14:45:00'
-    },
-    {
-      id: 3,
-      name: 'Mike Johnson',
-      email: 'mike.johnson@email.com',
-      phone: '+1 (555) 456-7890',
-      address: '789 Pine Rd, Chicago, IL 60601',
-      created_at: '2024-01-25 09:15:00'
-    }
-  ]);
+  // Customer data state
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -51,14 +29,19 @@ const Customers = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Fetch customers on component mount
+  useEffect(() => {
+    customerAPI.fetchCustomers(setLoading, setError, setCustomers);
+  }, []);
+
 
   const handleEditClick = (customer) => {
     setEditingCustomer(customer);
     setEditForm({
-      name: customer.name,
-      email: customer.email,
-      phone: customer.phone,
-      address: customer.address
+      name: String(customer.name || ''),
+      email: String(customer.email || ''),
+      phone: String(customer.phone || ''),
+      address: String(customer.address || '')
     });
   };
 
@@ -70,15 +53,18 @@ const Customers = () => {
     }));
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingCustomer) {
-      setCustomers(prev => prev.map(customer => 
-        customer.id === editingCustomer.id 
-          ? { ...customer, ...editForm }
-          : customer
-      ));
-      setEditingCustomer(null);
-      setEditForm({ name: '', email: '', phone: '', address: '' });
+      const result = await customerAPI.updateCustomerWithState(
+        editingCustomer.id, 
+        editForm, 
+        setCustomers, 
+        setEditingCustomer, 
+        setEditForm
+      );
+      if (!result.success) {
+        alert(`Error updating customer: ${result.error}`);
+      }
     }
   };
 
@@ -91,10 +77,16 @@ const Customers = () => {
     setDeletingCustomer(customer);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deletingCustomer) {
-      setCustomers(prev => prev.filter(customer => customer.id !== deletingCustomer.id));
-      setDeletingCustomer(null);
+      const result = await customerAPI.deleteCustomerWithState(
+        deletingCustomer.id, 
+        setCustomers, 
+        setDeletingCustomer
+      );
+      if (!result.success) {
+        alert(`Error deleting customer: ${result.error}`);
+      }
     }
   };
 
@@ -120,19 +112,17 @@ const Customers = () => {
     }));
   };
 
-  const handleSaveAdd = () => {
+  const handleSaveAdd = async () => {
     if (addForm.name && addForm.email && addForm.phone && addForm.address) {
-      const newCustomer = {
-        id: Math.max(...customers.map(customer => customer.id)) + 1,
-        name: addForm.name,
-        email: addForm.email,
-        phone: addForm.phone,
-        address: addForm.address,
-        created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-      };
-      setCustomers(prev => [...prev, newCustomer]);
-      setAddingCustomer(false);
-      setAddForm({ name: '', email: '', phone: '', address: '' });
+      const result = await customerAPI.createCustomerWithState(
+        addForm, 
+        setCustomers, 
+        setAddingCustomer, 
+        setAddForm
+      );
+      if (!result.success) {
+        alert(`Error creating customer: ${result.error}`);
+      }
     }
   };
 
@@ -163,11 +153,11 @@ const Customers = () => {
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
       filteredCustomers = customers.filter(customer => 
-        customer.id.toString().includes(searchLower) ||
-        customer.name.toLowerCase().includes(searchLower) ||
-        customer.email.toLowerCase().includes(searchLower) ||
-        customer.phone.toLowerCase().includes(searchLower) ||
-        customer.address.toLowerCase().includes(searchLower)
+        String(customer.id || '').includes(searchLower) ||
+        String(customer.name || '').toLowerCase().includes(searchLower) ||
+        String(customer.email || '').toLowerCase().includes(searchLower) ||
+        String(customer.phone || '').toLowerCase().includes(searchLower) ||
+        String(customer.address || '').toLowerCase().includes(searchLower)
       );
     }
 
@@ -182,8 +172,8 @@ const Customers = () => {
           aValue = new Date(aValue);
           bValue = new Date(bValue);
         } else if (typeof aValue === 'string') {
-          aValue = aValue.toLowerCase();
-          bValue = bValue.toLowerCase();
+          aValue = String(aValue || '').toLowerCase();
+          bValue = String(bValue || '').toLowerCase();
         }
 
         if (aValue < bValue) {
@@ -263,89 +253,110 @@ const Customers = () => {
         </div>
 
         <div className="customers-table-container">
-          <table className="customers-table">
-            <thead>
-              <tr>
-                <th 
-                  className="sortable" 
-                  onClick={() => handleSort('id')}
-                >
-                  Customer ID {getSortIcon('id')}
-                </th>
-                <th 
-                  className="sortable" 
-                  onClick={() => handleSort('name')}
-                >
-                  Name {getSortIcon('name')}
-                </th>
-                <th 
-                  className="sortable" 
-                  onClick={() => handleSort('email')}
-                >
-                  Email {getSortIcon('email')}
-                </th>
-                <th>Phone</th>
-                <th 
-                  className="sortable" 
-                  onClick={() => handleSort('address')}
-                >
-                  Address {getSortIcon('address')}
-                </th>
-                <th 
-                  className="sortable" 
-                  onClick={() => handleSort('created_at')}
-                >
-                  Created At {getSortIcon('created_at')}
-                </th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {getSortedAndFilteredCustomers().length > 0 ? (
-                getSortedAndFilteredCustomers().map(customer => (
-                  <tr key={customer.id}>
-                    <td>{customer.id}</td>
-                    <td>{customer.name}</td>
-                    <td>{customer.email}</td>
-                    <td>{customer.phone}</td>
-                    <td>{customer.address}</td>
-                    <td>{formatDate(customer.created_at)}</td>
-                    <td>
-                      <div className="action-buttons">
-                        <button 
-                          className="edit-btn"
-                          onClick={() => handleEditClick(customer)}
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          className="delete-btn"
-                          onClick={() => handleDeleteClick(customer)}
-                        >
-                          Delete
-                        </button>
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Loading customers...</p>
+            </div>
+          ) : error ? (
+            <div className="error-container">
+              <div className="error-content">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="error-icon">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="15" y1="9" x2="9" y2="15"/>
+                  <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+                <p className="error-message">{error}</p>
+                <button className="retry-btn" onClick={() => customerAPI.fetchCustomers(setLoading, setError, setCustomers)}>
+                  Try Again
+                </button>
+              </div>
+            </div>
+          ) : (
+            <table className="customers-table">
+              <thead>
+                <tr>
+                  <th 
+                    className="sortable" 
+                    onClick={() => handleSort('id')}
+                  >
+                    Customer ID {getSortIcon('id')}
+                  </th>
+                  <th 
+                    className="sortable" 
+                    onClick={() => handleSort('name')}
+                  >
+                    Name {getSortIcon('name')}
+                  </th>
+                  <th 
+                    className="sortable" 
+                    onClick={() => handleSort('email')}
+                  >
+                    Email {getSortIcon('email')}
+                  </th>
+                  <th>Phone</th>
+                  <th 
+                    className="sortable" 
+                    onClick={() => handleSort('address')}
+                  >
+                    Address {getSortIcon('address')}
+                  </th>
+                  <th 
+                    className="sortable" 
+                    onClick={() => handleSort('created_at')}
+                  >
+                    Created At {getSortIcon('created_at')}
+                  </th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getSortedAndFilteredCustomers().length > 0 ? (
+                  getSortedAndFilteredCustomers().map(customer => (
+                    <tr key={customer.id}>
+                      <td>{customer.id}</td>
+                      <td>{customer.name}</td>
+                      <td>{customer.email}</td>
+                      <td>{customer.phone}</td>
+                      <td>{customer.address}</td>
+                      <td>{formatDate(customer.created_at)}</td>
+                      <td>
+                        <div className="action-buttons">
+                          <button 
+                            className="edit-btn"
+                            onClick={() => handleEditClick(customer)}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="delete-btn"
+                            onClick={() => handleDeleteClick(customer)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="no-results-row">
+                    <td colSpan="7" className="no-results">
+                      <div className="no-results-content">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="no-results-icon">
+                          <circle cx="11" cy="11" r="8"/>
+                          <path d="m21 21-4.35-4.35"/>
+                          <line x1="11" y1="8" x2="11" y2="14"/>
+                          <line x1="8" y1="11" x2="14" y2="11"/>
+                        </svg>
+                        <p>No results found</p>
+                        <span>Try adjusting your search terms</span>
                       </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr className="no-results-row">
-                  <td colSpan="7" className="no-results">
-                    <div className="no-results-content">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="no-results-icon">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                        <line x1="11" y1="8" x2="11" y2="14"/>
-                        <line x1="8" y1="11" x2="14" y2="11"/>
-                      </svg>
-                      <p>No results found</p>
-                      <span>Try adjusting your search terms</span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Edit Modal */}
