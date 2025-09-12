@@ -1,0 +1,54 @@
+/* Layout Component Styles */
+.layout {
+  min-height: 100vh;
+  background-color: var(--color-deep-bg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.layout-content {
+  flex: 1;
+  padding: var(--spacing-lg);
+  margin-top: 64px; /* Account for fixed topbar height */
+  transition: margin-left 0.1s ease-in-out;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .layout-content {
+    padding: var(--spacing-md);
+    margin-top: 56px; /* Account for smaller topbar on mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  .layout-content {
+    padding: var(--spacing-sm);
+  }
+}
+
+/* Animation for content when sidebar opens/closes */
+.layout-content {
+  transition: all 0.1s ease-in-out;
+}
+
+/* Future: Content shift when sidebar is open (optional) */
+.layout.sidebar-open .layout-content {
+  /* Uncomment this if you want content to shift when sidebar is open */
+  /* margin-left: 280px; */
+}
+
+@media (max-width: 768px) {
+  .layout.sidebar-open .layout-content {
+    /* Uncomment this for mobile sidebar content shift */
+    /* margin-left: 260px; */
+  }
+}
+
+@media (max-width: 480px) {
+  .layout.sidebar-open .layout-content {
+    /* Uncomment this for small mobile sidebar content shift */
+    /* margin-left: 240px; */
+  }
+}
