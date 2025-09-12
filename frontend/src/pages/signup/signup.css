@@ -304,3 +304,13 @@
 .form-input:not(:placeholder-shown):not(.error) {
   border-color: var(--color-success);
 }
+
+.api-error {
+  margin-bottom: 20px;
+  text-align: center;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 12px;
+  border-radius: 6px;
+  color: #721c24;
+}

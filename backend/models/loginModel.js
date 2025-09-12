@@ -1,12 +1,5 @@
 const pool = require("../config/db");
 
-/**
- * Verify user credentials using PostgreSQL pgcrypto crypt() comparison in SQL.
- * Checks only public.users (password_hash field).
- * Returns the user row (id, email, created_at) if valid, otherwise null.
- *
- * Note: Avoid fetching hashes to the app; let the DB do crypt() comparison.
- */
 async function verifyUserCredentials(email, plaintextPassword) {
   if (!email || !plaintextPassword) return null;
 

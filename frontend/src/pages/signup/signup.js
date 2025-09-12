@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from "react-router-dom";
+import { authAPI } from '../../services/api';
 import './signup.css';
 
 const Signup = () => {
@@ -19,6 +20,7 @@ const Signup = () => {
     number: false,
     special: false
   });
+  const [apiError, setApiError] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -33,6 +35,11 @@ const Signup = () => {
         ...prev,
         [name]: ''
       }));
+    }
+
+    // Clear API error when user starts typing
+    if (apiError) {
+      setApiError(null);
     }
 
     // Check password strength in real-time
@@ -107,20 +114,29 @@ const Signup = () => {
       return;
     }
 
-    setIsLoading(true);
-    
-    // Dummy signup logic - simulate API call
-    setTimeout(() => {
-      console.log('Signup attempt:', formData);
-      alert('Account created successfully! (This is a dummy redirect)');
-      setIsLoading(false);
-      // Here you would typically redirect to login or dashboard
-      // window.location.href = '/login';
-    }, 1000);
+    const result = await authAPI.signupWithState(
+      {
+        email: formData.email,
+        password: formData.password
+      },
+      setIsLoading,
+      setApiError,
+      (responseData) => {
+        // Handle successful signup
+        console.log('Signup successful:', responseData);
+        alert('Account created successfully!');
+        navigate('/'); // Redirect to login page
+      }
+    );
+
+    if (!result.success) {
+      // Error is already handled by the API function
+      console.log('Signup failed:', result.error);
+    }
   };
 
   const handleLoginRedirect = () => {
-    navigate('/');
+    navigate('/login');
   };
 
   const isPasswordValid = Object.values(passwordStrength).every(Boolean);
@@ -132,7 +148,15 @@ const Signup = () => {
           <h1>Create Account</h1>
         </div>
 
+        {/* Add API error message */}
+        {apiError && (
+          <div className="error-message api-error">
+            {apiError}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="signup-form">
+          {/* ... rest of your form remains the same ... */}
           <div className="form-group">
             <label htmlFor="email" className="form-label">
               Email Address

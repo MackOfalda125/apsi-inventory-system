@@ -1,9 +1,5 @@
 const pool = require("../config/db");
 
-/**
- * Create a new user in public.users, hashing the password using pgcrypto.
- * Returns the created user's id, email, created_at.
- */
 async function createUser(email, plaintextPassword) {
   const client = await pool.connect();
   try {

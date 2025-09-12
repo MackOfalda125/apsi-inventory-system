@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from "react-router-dom";
+import { authAPI } from '../../services/api';
 import './login.css';
 
 const Login = () => {
@@ -10,6 +11,7 @@ const Login = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -17,6 +19,8 @@ const Login = () => {
       ...prev,
       [name]: value
     }));
+    // Clear error when user starts typing
+    if (error) setError(null);
   };
 
   const togglePasswordVisibility = () => {
@@ -25,13 +29,32 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
     
-    // Dummy login logic - simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate('/dashboard');
-    }, 500);
+    const result = await authAPI.loginWithState(
+      formData,
+      setIsLoading,
+      setError,
+      (responseData) => {
+        // Handle successful login
+        console.log('Login successful:', responseData);
+        
+        // Store token or user data if needed
+        if (responseData.token) {
+          localStorage.setItem('authToken', responseData.token);
+        }
+        if (responseData.user) {
+          localStorage.setItem('userData', JSON.stringify(responseData.user));
+        }
+        
+        // Navigate to dashboard
+        navigate('/dashboard');
+      }
+    );
+
+    if (!result.success) {
+      // Error is already handled by the API function
+      console.log('Login failed:', result.error);
+    }
   };
 
   const handleSignupRedirect = () => {
@@ -58,7 +81,7 @@ const Login = () => {
               onChange={handleInputChange}
               className="form-input"
               placeholder="Enter your email"
-              // required // remove comment in production
+              required
             />
           </div>
 
@@ -75,7 +98,7 @@ const Login = () => {
                 onChange={handleInputChange}
                 className="form-input password-input"
                 placeholder="Enter your password"
-                // required // remove comment in production
+                required
               />
               <button
                 type="button"
@@ -98,6 +121,11 @@ const Login = () => {
             </div>
           </div>
 
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
 
           <button
             type="submit"
