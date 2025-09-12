@@ -5,6 +5,9 @@ const cors = require("cors");
 const loginRouter = require("./routes/loginRoute");
 const signupRouter = require("./routes/signupRoute");
 const customersRouter = require("./routes/customersRoute");
+const itemsRouter = require("./routes/itemsRoute");
+const ordersRouter = require("./routes/ordersRoute");
+const invoicesRouter = require("./routes/invoicesRoute");
 
 const app = express();
 
@@ -20,13 +23,13 @@ app.get("/health", (_req, res) => {
 app.use("/api", loginRouter);
 app.use("/api", signupRouter);
 app.use("/api", customersRouter);
+app.use("/api", itemsRouter);
+app.use("/api", ordersRouter);
+app.use("/api", invoicesRouter);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  // eslint-disable-next-line no-console
   console.log(`Backend running on port ${PORT}`);
 });
 
 module.exports = app;
-
-
