@@ -8,6 +8,7 @@ const customersRouter = require("./routes/customersRoute");
 const itemsRouter = require("./routes/itemsRoute");
 const ordersRouter = require("./routes/ordersRoute");
 const invoicesRouter = require("./routes/invoicesRoute");
+const dashboardRouter = require("./routes/dashboardRoute")
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api", customersRouter);
 app.use("/api", itemsRouter);
 app.use("/api", ordersRouter);
 app.use("/api", invoicesRouter);
+app.use("/api", dashboardRouter)
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
